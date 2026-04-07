@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Finance Intelligence Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            surface: '#0f1117',
+            panel:   '#161b27',
+            border:  '#1e2535',
+            accent:  '#3b82f6',
+            accentHover: '#2563eb',
+            gold:    '#f59e0b',
+            green:   '#10b981',
+            red:     '#ef4444',
+            muted:   '#64748b',
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background: #0f1117; }
+
+    .card-glow:hover {
+      box-shadow: 0 0 0 1px rgba(59,130,246,0.4), 0 4px 24px rgba(59,130,246,0.08);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .sector-banking      { background: rgba(59,130,246,0.15);  color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+    .sector-investment   { background: rgba(245,158,11,0.12);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+    .sector-insurance    { background: rgba(16,185,129,0.12);  color: #6ee7b7; border: 1px solid rgba(16,185,129,0.3); }
+    .sector-payments     { background: rgba(139,92,246,0.12);  color: #c4b5fd; border: 1px solid rgba(139,92,246,0.3); }
+    .sector-wealthtech   { background: rgba(236,72,153,0.12);  color: #f9a8d4; border: 1px solid rgba(236,72,153,0.3); }
+    .sector-fintech      { background: rgba(20,184,166,0.12);  color: #5eead4; border: 1px solid rgba(20,184,166,0.3); }
+
+    .pulse-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      display: inline-block;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .rank-badge {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.05em;
+      min-width: 20px;
+    }
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 50;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .modal-box {
+      background: #161b27;
+      border: 1px solid #1e2535;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 520px;
+      width: 90%;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.6);
+    }
+
+    .cmd-block {
+      background: #0f1117;
+      border: 1px solid #1e2535;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #10b981;
+      letter-spacing: 0.02em;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f1117; }
+    ::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 3px; }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- Modal -->
+  <div id="refreshModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Refresh Dashboard</h2>
+          <p class="text-sm text-slate-400 mt-1">Paste this command into your terminal to pull fresh data:</p>
+        </div>
+        <button onclick="closeModal()" class="text-slate-500 hover:text-white ml-4 text-xl leading-none">&times;</button>
+      </div>
+      <div class="cmd-block mb-4">claude "update the dashboard"</div>
+      <p class="text-xs text-slate-500 mb-5">
+        Claude will read the embedded instruction block in <code class="text-slate-300">ai_finance_dashboard.html</code>,
+        search for today's AI-in-finance news, and overwrite the file while preserving this UI.
+      </p>
+      <button onclick="copyCmd()" id="copyBtn"
+        class="w-full py-2 rounded-lg bg-accent hover:bg-accentHover text-white text-sm font-medium transition-colors">
+        Copy Command
+      </button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="border-b border-border sticky top-0 z-40" style="background:rgba(15,17,23,0.92);backdrop-filter:blur(12px);">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white font-bold text-sm">AI</div>
+        <div>
+          <h1 class="text-base font-semibold text-white leading-tight">AI Finance Intelligence Dashboard</h1>
+          <p class="text-xs text-muted">Global deployments · Financial sector · Last 14 days</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 text-xs text-muted">
+          <span class="pulse-dot"></span>
+          <span id="lastUpdated">Last Updated: <span class="text-slate-300 font-medium"></span></span>
+        </div>
+        <button onclick="openModal()"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent hover:bg-accentHover text-white text-sm font-medium transition-colors shadow-lg shadow-blue-900/20">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh Dashboard
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Stats Bar -->
+  <div class="border-b border-border bg-panel">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex items-center gap-8 overflow-x-auto">
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-2xl font-bold text-white">10</span>
+        <span class="text-xs text-muted leading-tight">Deployments<br>Tracked</span>
+      </div>
+      <div class="w-px h-8 bg-border"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-2xl font-bold text-green">500+</span>
+        <span class="text-xs text-muted leading-tight">JPMorgan AI<br>Use Cases Live</span>
+      </div>
+      <div class="w-px h-8 bg-border"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-2xl font-bold text-gold">$25T</span>
+        <span class="text-xs text-muted leading-tight">AUM on<br>Aladdin AI</span>
+      </div>
+      <div class="w-px h-8 bg-border"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-2xl font-bold text-accent">95%</span>
+        <span class="text-xs text-muted leading-tight">AML False<br>Positives Cut</span>
+      </div>
+      <div class="w-px h-8 bg-border"></div>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-2xl font-bold text-white">61%</span>
+        <span class="text-xs text-muted leading-tight">APAC Fintechs<br>AI-Adopted</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 gap-4" id="deploymentsGrid">
+
+      <!-- Card Template — repeated 10x -->
+
+      <!-- 1. JPMorgan Chase -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#01</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">JPMorgan Chase</span>
+            <span class="badge sector-banking">Banking</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">LLM Suite (200k+ employees) + 500 live AI use cases including real-time AML fraud detection and predictive liquidity management via JPMD token integration</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">AML false positives cut by <span class="text-green font-semibold">95%</span>; autonomous capital optimization for corporate treasurers; 24/7 frictionless settlement via tokenized assets — "AI is the brain of JPMorgan's infrastructure" (March 30, 2026)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Sets the benchmark APAC regional banks (DBS, OCBC, ANZ) must match. AML false-positive reduction directly relevant to APAC correspondent banking compliance burdens and MAS TRM guidelines.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Goldman Sachs -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#02</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Goldman Sachs</span>
+            <span class="badge sector-investment">Investment Banking</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">GS AI Assistant (GPT-4, Gemini, Llama) deployed to 10,000 staff; Devin autonomous coding agent across 12,000 developers; AI drafts IPO documents end-to-end</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300"><span class="text-green font-semibold">3–4× developer productivity</span> from Devin; IPO documents drafted in minutes vs. weeks with 95% AI authorship; agentic AI model across three pillars: assistant, networking (Louisa), and autonomous engineering</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Autonomous IPO drafting threatens APAC capital markets advisory roles. Hong Kong and Singapore investment banks face margin compression as document-intensive M&A / ECM workflows commoditize.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Anthropic + LPL Financial / Orion -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#03</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Anthropic × LPL Financial / Orion</span>
+            <span class="badge sector-wealthtech">Wealthtech</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">Claude AI "plug-ins" for wealth managers: automated portfolio analysis, tax optimization, rebalancing recommendations, and compliance-controlled deployment across 30,000+ advisors serving ~8M clients</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">Eliminates manual data entry for advisors; enables at-scale rebalancing execution; private, compliance-governed AI models per institution — first major AI partnership pairing a frontier model with retail distribution at this scale (Feb–Mar 2026)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Template for APAC robo-advisory incumbents (StashAway, Endowus, Syfe). MAS' AI governance expectations will require similar compliance-controlled architecture. Could reshape the independent financial advisor model in Australia and Singapore.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Mastercard -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#04</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Mastercard</span>
+            <span class="badge sector-payments">Payments</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">"AI vs AI" fraud prevention framework: real-time behavioral biometrics (keystroke cadence, device fingerprint, mouse patterns) combined with gen AI anomaly detection across global payment flows</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300"><span class="text-green font-semibold">300% improvement</span> in fraud detection rates; 42% of issuers saved $5M+ over two years; 83% reduction in false positives and customer churn. Positions AI defense as the only viable counter to AI-powered fraud attacks (2026 report)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Southeast Asia's rapid real-time payments growth (PayNow, PromptPay, UPI linkages) makes it a high-value fraud target. Mastercard's framework offers APAC issuers a plug-and-play defense layer aligned with cross-border payment corridors.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Cytora — Autopilot -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#05</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Cytora — Autopilot</span>
+            <span class="badge sector-insurance">Insurance</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">Agentic AI that autonomously executes end-to-end commercial insurance underwriting and claims workflows — ingests emails, documents, and calls across time to build a 360° risk view with zero manual data coordination (launched March 17, 2026)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">Eliminates up to <span class="text-gold font-semibold">50% of underwriter time</span> spent on submission review and broker follow-ups; first fully self-executing insurance workflow — underwriters shift from operators to supervisors</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">APAC's underpenetrated commercial insurance markets (Indonesia, Vietnam, Philippines) can leapfrog legacy underwriting infrastructure. APAC re/insurers (Tokio Marine, AIA, Ping An) face competitive pressure to match automation depth or lose broker distribution.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. BlackRock Aladdin + iCapital -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#06</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">BlackRock Aladdin × iCapital</span>
+            <span class="badge sector-investment">Asset Management</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">Aladdin Wealth integrates iCapital's alternative investment platform (March 25, 2026) enabling AI-powered portfolio construction across public and private markets; Aladdin Copilot surfaces real-time alpha insights across $25T in managed assets</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">Unified AI lens across liquid and illiquid assets for the first time; AWS infrastructure expansion (H2 2026) will allow any institution globally to run Aladdin's AI on-demand; Auto Commentary converts complex analytics into client-ready advisor narratives</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">APAC family offices and sovereign wealth funds (GIC, Temasek, ADIA affiliates) use Aladdin. Expanded alternatives integration reshapes APAC private credit and infrastructure allocation decisions. AWS deployment unlocks regional data residency compliance.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Morgan Stanley — 3,500 AI Tools Ecosystem -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#07</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Morgan Stanley</span>
+            <span class="badge sector-wealthtech">Wealth Management</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">3,500+ individual AI tools in production across advisor workflows; AI @ Morgan Stanley Debrief (meeting notes, action items, Salesforce sync); Roth Conversion Analyst (automated tax scenario modeling); AskResearchGPT for equity research</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300"><span class="text-green font-semibold">98% of advisor teams</span> actively use AI tools — highest AI adoption rate publicly reported by any wealth manager; AI moves from back-office to front-office client interaction (disclosed at UBS 2026 Financial Services Conference)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Sets advisor-AI integration standard that APAC private banks (UBS APAC, Julius Baer, Credit Suisse legacy assets) must benchmark. AI-generated meeting notes create compliance records well-suited to MAS and HKMA expectations around client suitability documentation.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. APAC Fintech — Money20/20 Asia Scale Shift -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#08</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">APAC Fintech Ecosystem (Money20/20 Asia)</span>
+            <span class="badge sector-fintech">Regional · Fintech</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">Region-wide shift from AI pilot programs to enterprise-scale production (March 2026 report): AI-driven fraud prevention (63.5% top priority), stablecoin/tokenized asset compliance automation, real-time risk intelligence across Singapore, HK, Japan, SEA corridors</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300"><span class="text-gold font-semibold">61.2%</span> of APAC fintechs have adopted AI/ML; Southeast Asia identified as primary growth target by 22.9% of respondents; regulatory frameworks in SG, HK, JP now enabling institutional stablecoin and tokenized asset deployment at scale</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">APAC is no longer an AI adopter — it is becoming an AI exporter. SEA's leapfrog dynamic (no legacy infrastructure) allows faster AI deployment than Western incumbents. Cross-border payment AI corridors (SG-TH-MY-ID) may surpass SWIFT efficiency within 24 months.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. Apex Fintech Solutions × Wavvest -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#09</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Apex Fintech Solutions × Wavvest</span>
+            <span class="badge sector-fintech">Fintech · Planning</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">Strategic partnership to deliver AI-powered financial planning that generates complete financial plans using real-time custodial data — eliminates manual data entry and plan-building for independent financial advisors (announced March 24–25, 2026)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">Plans generated in minutes using live account data; removes the planning bottleneck for independent RIAs and broker-dealers; democratizes sophisticated financial planning for smaller advisory firms that lack enterprise infrastructure</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Directly applicable to APAC's growing IFA (Independent Financial Advisor) sector in Singapore, Hong Kong, and Australia. Real-time custodial data integration model aligns with MAS' open data initiatives and Australia's CDR (Consumer Data Right) framework.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. Robinhood AI Personal Finance -->
+      <div class="card-glow bg-panel border border-border rounded-xl p-5 grid grid-cols-[auto_1fr] gap-4">
+        <div class="flex flex-col items-center gap-1 pt-0.5">
+          <span class="rank-badge">#10</span>
+          <div class="w-px flex-1 bg-border mt-2"></div>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="text-base font-semibold text-white">Robinhood — AI Personal Finance</span>
+            <span class="badge sector-fintech">Retail Fintech</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">AI Use Case</p>
+              <p class="text-slate-300">AI-powered personal finance and investing services targeting Millennial and Gen Z investors; AI positioned as a personal financial advisor for retail users — autonomous portfolio suggestions, spending analysis, and investment guidance without human intermediary (March 26, 2026)</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">Business Claim</p>
+              <p class="text-slate-300">Targets the growing segment of young investors who prefer AI over human advisors; industry betting on mass-market AI-as-advisor replacing traditional advisory for under-$250k AUM segment; positions Robinhood as AI-native financial "super app"</p>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-muted uppercase tracking-wider mb-1">APAC Strategic Implication</p>
+              <p class="text-slate-300">Directly replicable by APAC neobanks (Revolut APAC, Seabank, GXS Bank). Millennial-first AI advisor model is highly suited to APAC's demographic profile — 60% of global millennials are in Asia. Regulatory frameworks (MAS FEAT, HKMA DARA) will need to address AI-only advisory liability.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- Footer -->
+    <footer class="mt-10 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-4 text-xs text-muted">
+      <div>
+        Data sourced from public financial news, institutional press releases, and industry reports.
+        All figures are as reported by the respective institutions.
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="pulse-dot"></span>
+        <span>Coverage window: March 24 – April 7, 2026</span>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    // Set last-updated timestamp
+    (function() {
+      const now = new Date();
+      const opts = { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', timeZoneName:'short' };
+      document.querySelector('#lastUpdated span').textContent = now.toLocaleString('en-US', opts);
+    })();
+
+    function openModal() {
+      document.getElementById('refreshModal').classList.remove('hidden');
+    }
+    function closeModal() {
+      document.getElementById('refreshModal').classList.add('hidden');
+    }
+    // Close on backdrop click
+    document.getElementById('refreshModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+    // ESC to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    function copyCmd() {
+      navigator.clipboard.writeText('claude "update the dashboard"').then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied!';
+        btn.classList.replace('bg-accent','bg-green');
+        setTimeout(() => {
+          btn.textContent = 'Copy Command';
+          btn.classList.replace('bg-green','bg-accent');
+        }, 2000);
+      });
+    }
+  </script>
+
+</body>
+</html>
+
+<!--
+=============================================================================
+  DAILY REVIEW INSTRUCTION BLOCK — FOR CLAUDE ONLY
+  Trigger phrase: "update the dashboard"
+=============================================================================
+
+ROLE: You are a Senior AI-in-Finance Intelligence Analyst.
+
+TASK: When the user says "update the dashboard", execute ALL steps below
+      in order, then overwrite ai_finance_dashboard.html with fresh data.
+
+─────────────────────────────────────────────────────────────────────────────
+STEP 1 — SEARCH PARAMETERS
+─────────────────────────────────────────────────────────────────────────────
+Use WebSearch with TODAY'S DATE (use the currentDate from your system context).
+Run the following queries (all in parallel where possible):
+
+  Query A: "AI deployment financial sector banking [CURRENT MONTH] [CURRENT YEAR]"
+  Query B: "artificial intelligence fintech insurance banking launch [CURRENT MONTH] [CURRENT YEAR]"
+  Query C: "JPMorgan Goldman Sachs Morgan Stanley AI tool [CURRENT MONTH] [CURRENT YEAR]"
+  Query D: "AI fraud detection risk compliance bank announcement [CURRENT MONTH] [CURRENT YEAR]"
+  Query E: "APAC Asia Pacific fintech AI Singapore Hong Kong [CURRENT YEAR]"
+  Query F: "AI wealth management insurance underwriting launch [CURRENT MONTH] [CURRENT YEAR]"
+  Query G: "Mastercard Visa AI payments [CURRENT MONTH] [CURRENT YEAR]"
+
+Then use WebFetch on the 3–5 most relevant URLs to extract specific data points.
+
+─────────────────────────────────────────────────────────────────────────────
+STEP 2 — DATA EXTRACTION RULES
+─────────────────────────────────────────────────────────────────────────────
+For each of the 10 deployments you identify, extract:
+  - Institution name (exact)
+  - Sector: one of Banking / Investment Banking / Asset Management /
+             Insurance / Payments / Wealthtech / Fintech / Regtech
+  - AI Use Case: specific tool or capability (2–4 sentences)
+  - Business Claim: quantified outcomes if available (%, $, time savings)
+  - APAC Strategic Implication: 2–3 sentences on relevance to
+    Singapore, Hong Kong, Japan, Australia, or Southeast Asia markets
+
+Prioritize: news from the last 14 days. If insufficient, expand to 30 days.
+Prefer: named deployments with specific dates and measurable claims.
+Avoid: vendor predictions, analyst opinions, or hypothetical use cases.
+
+─────────────────────────────────────────────────────────────────────────────
+STEP 3 — STATS BAR VALUES
+─────────────────────────────────────────────────────────────────────────────
+Update the five stat metrics in the stats bar to reflect the new data:
+  - Number of deployments tracked (always 10)
+  - A notable quantified metric from story #1 (with label)
+  - A notable $ figure (AUM, savings, market size)
+  - A notable % metric (efficiency, detection rate, adoption)
+  - APAC-specific metric
+
+─────────────────────────────────────────────────────────────────────────────
+STEP 4 — OUTPUT RULES
+─────────────────────────────────────────────────────────────────────────────
+- Preserve the ENTIRE HTML structure, CSS, JavaScript, and this comment block
+- Only update: the 10 card blocks, the stats bar values, and the footer
+  coverage window dates
+- The "Last Updated" timestamp is set dynamically by JavaScript — do not
+  hardcode it in HTML
+- Re-rank cards #01–#10 by strategic significance (most impactful first)
+- Keep sector badge class names consistent with the CSS definitions above:
+    sector-banking | sector-investment | sector-insurance |
+    sector-payments | sector-wealthtech | sector-fintech
+- Overwrite the file: ai_finance_dashboard.html (same directory)
+
+─────────────────────────────────────────────────────────────────────────────
+SEARCH QUALITY CHECKLIST
+─────────────────────────────────────────────────────────────────────────────
+Before writing the file, confirm:
+  [ ] At least 6 of 10 stories have a specific date within the last 14 days
+  [ ] At least 2 of 10 stories have a direct APAC institution or market angle
+  [ ] At least 1 story covers fraud/risk/compliance
+  [ ] At least 1 story covers insurance or InsurTech
+  [ ] Stats bar contains real numbers from the new stories (not placeholders)
+
+=============================================================================
+-->

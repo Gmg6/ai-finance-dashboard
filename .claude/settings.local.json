@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.ai-street.co)",
+      "mcp__f7b3d239-9fe4-4b98-b400-dc18cc95132d__deploy_to_vercel",
+      "Bash(vercel --version)",
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel deploy:*)"
+    ]
+  }
+}
